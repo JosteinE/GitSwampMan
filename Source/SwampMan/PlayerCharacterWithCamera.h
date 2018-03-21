@@ -22,9 +22,30 @@ public:
 	// Sets default values for this character's properties
 	APlayerCharacterWithCamera();
 
+	// Health
+	UPROPERTY(BlueprintReadWrite, EditorApplyMirror, Category = "Base Character")
+		float Health = 3;
+
+	// Checks if the character is dead.
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Base Character")
+		bool isDead = false;
+
+	// Calculates if the character is dead based on health.
+	virtual void CalculateDead();
+
+
+	UFUNCTION(BlueprintCallable, Category = "Base Character")
+		virtual void CalculateHealth(float delta);
+
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+		override;
+#endif 
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
 
 public:	
 	// Called every frame

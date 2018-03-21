@@ -32,6 +32,10 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
 }
 
+void APlayerCharacterWithCamera::PostEditChangeProperty(FPropertyChangedEvent & PropertyChangedEvent)
+{
+}
+
 // Called when the game starts or when spawned
 void APlayerCharacterWithCamera::BeginPlay()
 {
@@ -181,3 +185,31 @@ void APlayerCharacterWithCamera::IsNotSprinting()
 {
 	bSprinting = false;
 }
+
+void APlayerCharacterWithCamera::CalculateHealth(float Delta)
+{
+	Health += Delta;
+	CalculateDead();
+}
+
+void APlayerCharacterWithCamera::CalculateDead()
+{
+	if (Health <= 0)
+		isDead = true;
+	else 
+		isDead = false;
+}
+
+#if WITH_EDITOR
+void APlayerCharacterWithCamera::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	isDead = false;
+	Health = 3;
+
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+	CalculateDead();
+}
+
+
+#endif
