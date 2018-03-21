@@ -29,9 +29,10 @@ protected:
 
 private:
 	// Cast a ray
-
 	void RayCast();
 
+	UFUNCTION() 
+	void OnOverlapActivateWind(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -47,6 +48,9 @@ public:
 
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* PlayerBox;
+
+	UPROPERTY(VisibleAnywhere)
+	class UStaticMeshComponent* WindMesh;
 
 	UPROPERTY(EditAnywhere)
 	float MovementSpeed = 500.0f;
@@ -70,7 +74,10 @@ public:
 	float PlayerHealth = 100.0f;
 
 	UPROPERTY(EditAnywhere)
-	float WindLength = 150.f;
+	float WindLength = 130.f;
+
+	UPROPERTY(EditAnywhere)
+	float WindAngle = 20.f;
 
 	//Input variables
 	APlayerController* PcMouse;
@@ -92,7 +99,4 @@ public:
 	void NotShootingProjectile();
 	void IsSprinting();
 	void IsNotSprinting();
-
-	
-	
 };

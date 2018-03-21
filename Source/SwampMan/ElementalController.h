@@ -35,6 +35,6 @@ public:
 	UPROPERTY(EditAnywhere)
 	float Speed;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	AActor* Player;	
 };

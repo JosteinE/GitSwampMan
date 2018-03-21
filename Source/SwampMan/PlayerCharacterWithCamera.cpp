@@ -29,6 +29,14 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 
 	//Take control of the default Player
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
+
+	//Create our wind spell mesh
+	WindMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WindTriangle"));
+	WindMesh->SetupAttachment(RootComponent);
+	WindMesh->bGenerateOverlapEvents = true;
+	WindMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnOverlapActivateWind);
+	WindMesh->bHiddenInGame = true;
 }
 
 // Called when the game starts or when spawned
@@ -109,6 +117,7 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 		if (bFireProjectile)
 		{
 			RayCast();
+			//OnOverlapActivateWind();
 		}
 	}
 }
@@ -191,47 +200,70 @@ void APlayerCharacterWithCamera::IsNotSprinting()
 void APlayerCharacterWithCamera::RayCast()
 {
 	{
+		//Raycast a triangle in front of the player that will indicate where the wind spell will be blowing
 		FHitResult* HitResult = new FHitResult();
 
 		FVector OrigoToPlayer = GetActorLocation();
 		FVector ForwardVector = GetActorForwardVector();
 
-		FVector PlayerToEndtrace = (ForwardVector * WindLength);
+		// Make a 45 degree line to the players right
+		FVector PlayerToEndtraceRight = (ForwardVector * WindLength);
+		PlayerToEndtraceRight = PlayerToEndtraceRight.RotateAngleAxis(WindAngle, FVector::UpVector);
+		FCollisionQueryParams* CQPRight = new FCollisionQueryParams{ "RightDebugLine", false };
+		GetWorld()->DebugDrawTraceTag = CQPRight->TraceTag;
+		GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer, OrigoToPlayer + PlayerToEndtraceRight, ECC_Visibility, *CQPRight);
 
-		PlayerToEndtrace = PlayerToEndtrace.RotateAngleAxis(45.f, FVector::UpVector);
 
-		FCollisionQueryParams* CQP = new FCollisionQueryParams{ "Fish", false };
+		// Make a 45 degree line to the players left
+		FVector PlayerToEndtraceLeft = (ForwardVector * WindLength);
+		PlayerToEndtraceLeft = PlayerToEndtraceLeft.RotateAngleAxis(-WindAngle, FVector::UpVector);
+		FCollisionQueryParams* CQPLeft = new FCollisionQueryParams{ "LeftDebugLine", false };
+		GetWorld()->DebugDrawTraceTag = CQPLeft->TraceTag;
+		GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer, OrigoToPlayer + PlayerToEndtraceLeft, ECC_Visibility, *CQPLeft);
 
-		GetWorld()->DebugDrawTraceTag = CQP->TraceTag;
-		//DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(255, 0, 0), true);
-		if (GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer, OrigoToPlayer + PlayerToEndtrace, ECC_Visibility, *CQP))
+		//Make the final line, connecting the two, to finish our triangle
+		FCollisionQueryParams* CQPFont = new FCollisionQueryParams{ "FrontDebugLine", false };
+		GetWorld()->DebugDrawTraceTag = CQPFont->TraceTag;
+		GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer + PlayerToEndtraceRight, OrigoToPlayer + PlayerToEndtraceLeft, ECC_Visibility, *CQPFont);
+
+		// Try adding force
+		APlayerController* PlayerController = Cast<APlayerController>(GetController());
+		if (PlayerController != nullptr)
 		{
-			/*if (HitResult != NULL)
-			{
+			FHitResult TraceResult(ForceInit);
 
-			}*/
+			AActor* OtherActor = TraceResult.GetActor();
+			UPrimitiveComponent* OtherActorComponent = TraceResult.GetComponent();
+
+			// If we hit an actor, with a component that is simulating physics, apply an impulse  
+			if ((OtherActor != nullptr) && (OtherActor != this) && (OtherActorComponent != nullptr) && OtherActorComponent->IsSimulatingPhysics())
+			{
+				const float ForceAmount = 20000.0f;
+				OtherActorComponent->AddForce(FVector(0.0f, 0.0f, ForceAmount));
+			}
 		}
 	}
+}
+
+void APlayerCharacterWithCamera::OnOverlapActivateWind(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	FVector BlowDirection = -GetActorLocation();
+	float ForceAmount = 20000.0f;
+	
+	UE_LOG(LogTemp, Warning, TEXT("IT WORKS"))
+
+	if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
 	{
-		FHitResult* HitResult = new FHitResult();
-
-		FVector OrigoToPlayer = GetActorLocation();
-		FVector ForwardVector = GetActorForwardVector();
-
-		FVector PlayerToEndtrace = (ForwardVector * WindLength);
-
-		PlayerToEndtrace = PlayerToEndtrace.RotateAngleAxis(-45.f, FVector::UpVector);
-
-		FCollisionQueryParams* CQP = new FCollisionQueryParams{ "Fish", false };
-
-		GetWorld()->DebugDrawTraceTag = CQP->TraceTag;
-		//DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(255, 0, 0), true);
-		if (GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer, OrigoToPlayer + PlayerToEndtrace, ECC_Visibility, *CQP))
-		{
-			/*if (HitResult != NULL)
-			{
-
-			}*/
-		}
+		const float ForceAmount = 20000.0f;
+		OverlappedComp->AddForce(FVector(0.0f, 0.0f, ForceAmount));
 	}
+
+	//AActor* OtherActor = WindMesh.
+	//UPrimitiveComponent* OtherActorComponent = WindMesh->GetOverlappingActors;
+	//// If we hit an actor, with a component that is simulating physics, apply an impulse  
+	//if ((OtherActor != nullptr) && (OtherActor != this) && (OtherActorComponent != nullptr) && OtherActorComponent->IsSimulatingPhysics())
+	//{
+	//	const float ForceAmount = 20000.0f;
+	//	OtherActorComponent->AddForce(FVector(0.0f, 0.0f, ForceAmount));
+	//}
 }
