@@ -11,6 +11,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/StaticMesh.h"
+#include "Runtime/Engine/Public/DrawDebugHelpers.h"
 #include "PlayerCharacterWithCamera.generated.h"
 
 UCLASS()
@@ -25,6 +26,11 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+private:
+	// Cast a ray
+
+	void RayCast();
 
 public:	
 	// Called every frame
@@ -62,6 +68,9 @@ public:
 
 	UPROPERTY(EditAnywhere)
 	float PlayerHealth = 100.0f;
+
+	UPROPERTY(EditAnywhere)
+	float WindLength = 150.f;
 
 	//Input variables
 	APlayerController* PcMouse;

@@ -2,7 +2,6 @@
 
 #include "PlayerCharacterWithCamera.h"
 
-
 // Sets default values
 APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 {
@@ -106,6 +105,12 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 			AddMovementInput(GetActorForwardVector(), SprintSpeed);
 		}
 	}
+	{
+		if (bFireProjectile)
+		{
+			RayCast();
+		}
+	}
 }
 
 // Called to bind functionality to input
@@ -180,4 +185,53 @@ void APlayerCharacterWithCamera::IsSprinting()
 void APlayerCharacterWithCamera::IsNotSprinting()
 {
 	bSprinting = false;
+}
+
+
+void APlayerCharacterWithCamera::RayCast()
+{
+	{
+		FHitResult* HitResult = new FHitResult();
+
+		FVector OrigoToPlayer = GetActorLocation();
+		FVector ForwardVector = GetActorForwardVector();
+
+		FVector PlayerToEndtrace = (ForwardVector * WindLength);
+
+		PlayerToEndtrace = PlayerToEndtrace.RotateAngleAxis(45.f, FVector::UpVector);
+
+		FCollisionQueryParams* CQP = new FCollisionQueryParams{ "Fish", false };
+
+		GetWorld()->DebugDrawTraceTag = CQP->TraceTag;
+		//DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(255, 0, 0), true);
+		if (GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer, OrigoToPlayer + PlayerToEndtrace, ECC_Visibility, *CQP))
+		{
+			/*if (HitResult != NULL)
+			{
+
+			}*/
+		}
+	}
+	{
+		FHitResult* HitResult = new FHitResult();
+
+		FVector OrigoToPlayer = GetActorLocation();
+		FVector ForwardVector = GetActorForwardVector();
+
+		FVector PlayerToEndtrace = (ForwardVector * WindLength);
+
+		PlayerToEndtrace = PlayerToEndtrace.RotateAngleAxis(-45.f, FVector::UpVector);
+
+		FCollisionQueryParams* CQP = new FCollisionQueryParams{ "Fish", false };
+
+		GetWorld()->DebugDrawTraceTag = CQP->TraceTag;
+		//DrawDebugLine(GetWorld(), StartTrace, EndTrace, FColor(255, 0, 0), true);
+		if (GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer, OrigoToPlayer + PlayerToEndtrace, ECC_Visibility, *CQP))
+		{
+			/*if (HitResult != NULL)
+			{
+
+			}*/
+		}
+	}
 }
