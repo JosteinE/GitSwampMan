@@ -35,8 +35,7 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 	WindMesh->SetupAttachment(RootComponent);
 	WindMesh->bGenerateOverlapEvents = true;
 	WindMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnOverlapActivateWind);
-	WindMesh->bHiddenInGame = true;
+	WindMesh->bHiddenInGame = false;
 }
 
 // Called when the game starts or when spawned
@@ -49,6 +48,8 @@ void APlayerCharacterWithCamera::BeginPlay()
 	PcMouse->bShowMouseCursor = true;
 	PcMouse->bEnableClickEvents = true;
 	PcMouse->bEnableMouseOverEvents = true;
+
+	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnOverlapActivateWind);
 }
 
 // Called every frame
@@ -117,7 +118,6 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 		if (bFireProjectile)
 		{
 			RayCast();
-			//OnOverlapActivateWind();
 		}
 	}
 }
@@ -225,45 +225,23 @@ void APlayerCharacterWithCamera::RayCast()
 		FCollisionQueryParams* CQPFont = new FCollisionQueryParams{ "FrontDebugLine", false };
 		GetWorld()->DebugDrawTraceTag = CQPFont->TraceTag;
 		GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer + PlayerToEndtraceRight, OrigoToPlayer + PlayerToEndtraceLeft, ECC_Visibility, *CQPFont);
-
-		// Try adding force
-		APlayerController* PlayerController = Cast<APlayerController>(GetController());
-		if (PlayerController != nullptr)
-		{
-			FHitResult TraceResult(ForceInit);
-
-			AActor* OtherActor = TraceResult.GetActor();
-			UPrimitiveComponent* OtherActorComponent = TraceResult.GetComponent();
-
-			// If we hit an actor, with a component that is simulating physics, apply an impulse  
-			if ((OtherActor != nullptr) && (OtherActor != this) && (OtherActorComponent != nullptr) && OtherActorComponent->IsSimulatingPhysics())
-			{
-				const float ForceAmount = 20000.0f;
-				OtherActorComponent->AddForce(FVector(0.0f, 0.0f, ForceAmount));
-			}
-		}
 	}
 }
 
 void APlayerCharacterWithCamera::OnOverlapActivateWind(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	FVector BlowDirection = -GetActorLocation();
+	UE_LOG(LogTemp, Warning, TEXT("IT WORKS"));
+
+	FVector PlayerLocation = this->GetActorLocation();
+	FVector OtherLocation = OtherActor->GetActorLocation();
+	FVector BlowDirection = PlayerLocation-OtherLocation;
+	BlowDirection.Z = 0.0f;
 	float ForceAmount = 20000.0f;
-	
-	UE_LOG(LogTemp, Warning, TEXT("IT WORKS"))
 
-	if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
+	//if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
+	if(bFireProjectile)
 	{
-		const float ForceAmount = 20000.0f;
-		OverlappedComp->AddForce(FVector(0.0f, 0.0f, ForceAmount));
+		OtherComp->AddForce(FVector(BlowDirection * -ForceAmount));
+		UE_LOG(LogTemp, Warning, TEXT("Other actor loc: X: %f, Y: %f, Z: %f"), OtherLocation.X, OtherLocation.Y, OtherLocation.Z);
 	}
-
-	//AActor* OtherActor = WindMesh.
-	//UPrimitiveComponent* OtherActorComponent = WindMesh->GetOverlappingActors;
-	//// If we hit an actor, with a component that is simulating physics, apply an impulse  
-	//if ((OtherActor != nullptr) && (OtherActor != this) && (OtherActorComponent != nullptr) && OtherActorComponent->IsSimulatingPhysics())
-	//{
-	//	const float ForceAmount = 20000.0f;
-	//	OtherActorComponent->AddForce(FVector(0.0f, 0.0f, ForceAmount));
-	//}
 }
