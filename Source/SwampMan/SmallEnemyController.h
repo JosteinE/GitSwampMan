@@ -36,7 +36,7 @@ public:
 	class UStaticMeshComponent* EnemyMeshBox;
 
 	UPROPERTY(EditAnywhere)
-	float Speed;
+	float Speed = 150.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	AActor* Player;

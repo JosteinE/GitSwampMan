@@ -12,6 +12,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/DrawDebugHelpers.h"
+#include "Components/CapsuleComponent.h"
 #include "PlayerCharacterWithCamera.generated.h"
 
 UCLASS()
@@ -32,7 +33,10 @@ private:
 	void RayCast();
 
 	UFUNCTION()
-	void OnOverlapActivateWind(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	void OnPlayerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnWindOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -50,13 +54,16 @@ public:
 	class UStaticMeshComponent* PlayerBox;
 
 	UPROPERTY(VisibleAnywhere)
+	class UCapsuleComponent* PlayerCapsule;
+
+	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* WindMesh;
 
 	UPROPERTY(EditAnywhere)
-	float MovementSpeed = 500.0f;
+	float MovementSpeed = 200.0f;
 
 	UPROPERTY(EditAnywhere)
-	float SprintSpeed = 850.0f;
+	float SprintSpeed = 200.0f;
 
 	UPROPERTY(EditAnywhere)
 	float ZoomedInCameraDistance = 300.0f;
@@ -87,6 +94,9 @@ public:
 	bool bZoomingIn;
 	bool bFireProjectile;
 	bool bSprinting;
+	bool bWindSelected;
+	bool bCamuflageSelected;
+	bool bDistractionSelected;
 
 	//Input functions
 	void MoveForward(float AxisValue);
@@ -99,4 +109,12 @@ public:
 	void NotShootingProjectile();
 	void IsSprinting();
 	void IsNotSprinting();
+	void WindSelected();
+	void CamuflageSelected();
+	void DistractionSelected();
+
+	//Spells unlocked
+	bool bWindSpellUnlocked = false;
+	bool bCamuflageSpellUnlocked = false;
+	bool bDistractionShotUnlocked = false;
 };

@@ -8,6 +8,8 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	PlayerCapsule = GetCapsuleComponent();
+
 	//Create our mesh
 	PlayerBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerCube"));
 	PlayerBox->SetupAttachment(RootComponent);
@@ -32,7 +34,7 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 
 	//Create our wind spell mesh
 	WindMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WindTriangle"));
-	WindMesh->SetupAttachment(RootComponent);
+	WindMesh->SetupAttachment(PlayerBox);
 	WindMesh->bGenerateOverlapEvents = true;
 	WindMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
 	WindMesh->bHiddenInGame = false;
@@ -49,14 +51,15 @@ void APlayerCharacterWithCamera::BeginPlay()
 	PcMouse->bEnableClickEvents = true;
 	PcMouse->bEnableMouseOverEvents = true;
 
-	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnOverlapActivateWind);
+	PlayerCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnPlayerOverlap);
+	
+	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnWindOverlap);
 }
 
 // Called every frame
 void APlayerCharacterWithCamera::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 	//Zoom in if ZoomIn button is down, zoom back out if it's not
 	{
 		if (bZoomingIn)
@@ -114,8 +117,9 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 			AddMovementInput(GetActorForwardVector(), SprintSpeed);
 		}
 	}
+
 	{
-		if (bFireProjectile)
+		if (bFireProjectile && bWindSelected && bWindSpellUnlocked)
 		{
 			RayCast();
 		}
@@ -130,10 +134,15 @@ void APlayerCharacterWithCamera::SetupPlayerInputComponent(UInputComponent* Play
 	//Hook up events for "ZoomIn"
 	InputComponent->BindAction("ZoomIn", IE_Pressed, this, &APlayerCharacterWithCamera::ZoomIn);
 	InputComponent->BindAction("ZoomIn", IE_Released, this, &APlayerCharacterWithCamera::ZoomOut);
+
+	//Hook up action events
 	InputComponent->BindAction("FireProjectile", IE_Pressed, this, &APlayerCharacterWithCamera::ShootingProjectile);
 	InputComponent->BindAction("FireProjectile", IE_Released, this, &APlayerCharacterWithCamera::NotShootingProjectile);
 	InputComponent->BindAction("Sprinting", IE_Pressed, this, &APlayerCharacterWithCamera::IsSprinting);
 	InputComponent->BindAction("Sprinting", IE_Released, this, &APlayerCharacterWithCamera::IsNotSprinting);
+	InputComponent->BindAction("SelectWindSpell", IE_Pressed, this, &APlayerCharacterWithCamera::WindSelected);
+	InputComponent->BindAction("SelectCamuflageSpell", IE_Pressed, this, &APlayerCharacterWithCamera::CamuflageSelected);
+	InputComponent->BindAction("SelectDistractionSpell", IE_Pressed, this, &APlayerCharacterWithCamera::DistractionSelected);
 
 	//Hook up every-frame handling for our four axes
 	InputComponent->BindAxis("MoveForward", this, &APlayerCharacterWithCamera::MoveForward);
@@ -196,6 +205,26 @@ void APlayerCharacterWithCamera::IsNotSprinting()
 	bSprinting = false;
 }
 
+void APlayerCharacterWithCamera::WindSelected()
+{
+	bWindSelected = true;
+	bCamuflageSelected = false;
+	bDistractionSelected = false;
+}
+
+void APlayerCharacterWithCamera::CamuflageSelected()
+{
+	bWindSelected = false;
+	bCamuflageSelected = true;
+	bDistractionSelected = false;
+}
+
+void APlayerCharacterWithCamera::DistractionSelected()
+{
+	bWindSelected = false;
+	bCamuflageSelected = false;
+	bDistractionSelected = true;
+}
 
 void APlayerCharacterWithCamera::RayCast()
 {
@@ -228,20 +257,47 @@ void APlayerCharacterWithCamera::RayCast()
 	}
 }
 
-void APlayerCharacterWithCamera::OnOverlapActivateWind(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void APlayerCharacterWithCamera::OnPlayerOverlap(UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex, bool bFromSweep,
+	const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT("IT WORKS"));
-
-	FVector PlayerLocation = this->GetActorLocation();
-	FVector OtherLocation = OtherActor->GetActorLocation();
-	FVector BlowDirection = PlayerLocation-OtherLocation;
-	BlowDirection.Z = 0.0f;
-	float ForceAmount = 20000.0f;
-
-	//if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
-	if(bFireProjectile)
+	// Unlock spells as scrolls are picked up
+	if (OtherActor->GetName() == "wind")
 	{
-		OtherComp->AddForce(FVector(BlowDirection * -ForceAmount));
+		UE_LOG(LogTemp, Warning, TEXT("Wind Happened"));
+		bWindSpellUnlocked = true;
+		bWindSelected = true;
+	}
+	if (OtherActor->GetName() == "distraction")
+	{
+		bDistractionShotUnlocked = true;
+	}
+	if (OtherActor->GetName() == "camuflage")
+	{
+		bCamuflageSpellUnlocked = true;
+	}
+}
+
+void APlayerCharacterWithCamera::OnWindOverlap(UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp, 
+	int32 OtherBodyIndex, bool bFromSweep, 
+	const FHitResult& SweepResult)
+{
+	if (bFireProjectile && bWindSpellUnlocked)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("IT DOESN`T WORKS"));
+
+		FVector PlayerLocation = this->GetActorLocation();
+		FVector OtherLocation = OtherActor->GetActorLocation();
+
+		FVector BlowDirection = PlayerLocation-OtherLocation;
+
+		BlowDirection.Z = 0.0f;
+		float ForceAmount = -20000.0f;
+
+		//if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
+		OtherComp->AddForce(FVector(BlowDirection * ForceAmount));
 		UE_LOG(LogTemp, Warning, TEXT("Other actor loc: X: %f, Y: %f, Z: %f"), OtherLocation.X, OtherLocation.Y, OtherLocation.Z);
 	}
 }

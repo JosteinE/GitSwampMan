@@ -12,8 +12,6 @@ ASmallEnemyController::ASmallEnemyController()
 	//Create our mesh
 	EnemyMeshBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EnemyCube"));
 	EnemyMeshBox->SetupAttachment(RootComponent);
-
-	Speed = 150.0f;
 }
 
 // Called when the game starts or when spawned
