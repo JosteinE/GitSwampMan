@@ -52,7 +52,7 @@ void APlayerCharacterWithCamera::BeginPlay()
 	PcMouse->bEnableMouseOverEvents = true;
 
 	PlayerCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnPlayerOverlap);
-	
+
 	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnWindOverlap);
 }
 
@@ -210,6 +210,12 @@ void APlayerCharacterWithCamera::WindSelected()
 	bWindSelected = true;
 	bCamuflageSelected = false;
 	bDistractionSelected = false;
+
+	if (bWindSpellUnlocked)
+	{
+		FString spell = FString::Printf(TEXT("Wind Spell Selected"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, spell);
+	}
 }
 
 void APlayerCharacterWithCamera::CamuflageSelected()
@@ -217,6 +223,12 @@ void APlayerCharacterWithCamera::CamuflageSelected()
 	bWindSelected = false;
 	bCamuflageSelected = true;
 	bDistractionSelected = false;
+
+	if (bCamuflageSpellUnlocked)
+	{
+		FString spell = FString::Printf(TEXT("Camuflage Spell Selected"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, spell);
+	}
 }
 
 void APlayerCharacterWithCamera::DistractionSelected()
@@ -224,6 +236,12 @@ void APlayerCharacterWithCamera::DistractionSelected()
 	bWindSelected = false;
 	bCamuflageSelected = false;
 	bDistractionSelected = true;
+
+	if (bDistractionShotUnlocked)
+	{
+		FString spell = FString::Printf(TEXT("Distraction Shot Selected"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, spell);
+	}
 }
 
 void APlayerCharacterWithCamera::RayCast()
@@ -284,7 +302,7 @@ void APlayerCharacterWithCamera::OnWindOverlap(UPrimitiveComponent* OverlappedCo
 	int32 OtherBodyIndex, bool bFromSweep, 
 	const FHitResult& SweepResult)
 {
-	if (bFireProjectile && bWindSpellUnlocked)
+	if (bFireProjectile && bWindSpellUnlocked && bWindSelected)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("IT DOESN`T WORKS"));
 
