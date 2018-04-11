@@ -40,7 +40,7 @@ public:
 	float Speed;
 
 	// Box Collider and overlap function
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(VisibleAnywhere)
 	UBoxComponent* BoxCollider;
 
 	UFUNCTION()

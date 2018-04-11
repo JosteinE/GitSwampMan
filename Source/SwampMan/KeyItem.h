@@ -33,14 +33,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = Pickup)
 	USceneComponent* SceneComponent;
 
-	UPROPERTY(EditAnywhere, Category = Pickup)
+	UPROPERTY(VisibleAnywhere, Category = Pickup)
 	UStaticMeshComponent* ItemMesh;
 
 	UPROPERTY(EditAnywhere, Category = Pickup)
 	float Speed;
 
 	// Box Collider and overlap function
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(VisibleAnywhere)
 	UBoxComponent* BoxCollider;
 
 	// Door to open

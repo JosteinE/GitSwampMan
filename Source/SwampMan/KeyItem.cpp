@@ -37,12 +37,12 @@ void AKeyItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
 	const FHitResult& SweepResult)
 {
 	// Check if the OtherActor is not me and if it is not NULL
-	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr) && (OtherActor->GetName() == "MyPlayerCharacterWithCamera_BP"))
+	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
 		FString pickup = FString::Printf(TEXT("You picked up a key and a door was opened."));
-
 		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, pickup);
 		GetWorld()->DestroyActor(Door);
+
 		Destroy();
 	}
 }
