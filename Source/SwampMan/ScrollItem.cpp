@@ -38,7 +38,7 @@ void AScrollItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
 	const FHitResult& SweepResult)
 {
 	// Check if the OtherActor is not me and if it is not NULL
-	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr) && (OtherActor->GetName() == "MyPlayerCharacterWithCamera_BP"))
+	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
 		FString pickup = FString::Printf(TEXT("You learned the %s spell!"), *GetName());
 		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, pickup);
