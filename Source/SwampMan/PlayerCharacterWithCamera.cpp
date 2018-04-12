@@ -13,6 +13,12 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 	//Create our mesh
 	PlayerBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerCube"));
 	PlayerBox->SetupAttachment(RootComponent);
+	PlayerBox->SetVisibility(true);
+
+	//Create our mesh for the camuflage spell
+	CamuflageMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CamuflageMesh"));
+	CamuflageMesh->SetupAttachment(RootComponent);
+	CamuflageMesh->SetVisibility(false);
 
 	//Create our camera components
 	OurCameraSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraSpringArm"));
@@ -51,8 +57,10 @@ void APlayerCharacterWithCamera::BeginPlay()
 	PcMouse->bEnableClickEvents = true;
 	PcMouse->bEnableMouseOverEvents = true;
 
+	//Handle overlapping with things such as pickups
 	PlayerCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnPlayerOverlap);
 
+	//Handle the wind spell functionallity
 	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnWindOverlap);
 }
 
@@ -119,9 +127,39 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 	}
 
 	{
-		if (bFireProjectile && bWindSelected && bWindSpellUnlocked)
+		if (bFireProjectile && bWindSelected && bWindSpellUnlocked && !BarrelVisible)
 		{
 			RayCast();
+		}
+	}
+
+	{
+		if (bCamuflageSpellUnlocked && bCamuflageSelected && bFireProjectile)
+		{
+			if (BarrelVisible)
+			{
+				CamuflageMesh->SetVisibility(false);
+				PlayerBox->SetVisibility(true);
+				BarrelVisible = false;
+				GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
+			}
+			else
+			{
+				CamuflageMesh->SetVisibility(true);
+				PlayerBox->SetVisibility(false);
+				BarrelVisible = true;
+				GetCharacterMovement()->MaxWalkSpeed = 0.f;
+			}
+			bFireProjectile = false;
+		}
+
+		//If the player is barreled and wants to use the wind spell, undo barrel
+		if (BarrelVisible && bWindSelected && bWindSpellUnlocked && bFireProjectile)
+		{
+			CamuflageMesh->SetVisibility(false);
+			PlayerBox->SetVisibility(true);
+			BarrelVisible = false;
+			GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
 		}
 	}
 }
@@ -285,7 +323,10 @@ void APlayerCharacterWithCamera::OnPlayerOverlap(UPrimitiveComponent* Overlapped
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Wind Happened"));
 		bWindSpellUnlocked = true;
+
 		bWindSelected = true;
+		bCamuflageSelected = false;
+		bDistractionSelected = false;
 	}
 	if (OtherActor->GetName() == "distraction")
 	{
@@ -304,8 +345,6 @@ void APlayerCharacterWithCamera::OnWindOverlap(UPrimitiveComponent* OverlappedCo
 {
 	if (bFireProjectile && bWindSpellUnlocked && bWindSelected)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("IT DOESN`T WORKS"));
-
 		FVector PlayerLocation = this->GetActorLocation();
 		FVector OtherLocation = OtherActor->GetActorLocation();
 

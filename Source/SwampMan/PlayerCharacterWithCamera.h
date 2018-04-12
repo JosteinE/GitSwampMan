@@ -13,6 +13,7 @@
 #include "Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "PlayerCharacterWithCamera.generated.h"
 
 UCLASS()
@@ -54,13 +55,16 @@ public:
 	class UStaticMeshComponent* PlayerBox;
 
 	UPROPERTY(VisibleAnywhere)
+	class UStaticMeshComponent* CamuflageMesh;
+
+	UPROPERTY(VisibleAnywhere)
 	class UCapsuleComponent* PlayerCapsule;
 
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* WindMesh;
 
 	UPROPERTY(EditAnywhere)
-	float MovementSpeed = 200.0f;
+	float MovementSpeed = 300.0f;
 
 	UPROPERTY(EditAnywhere)
 	float SprintSpeed = 200.0f;
@@ -117,4 +121,7 @@ public:
 	bool bWindSpellUnlocked = false;
 	bool bCamuflageSpellUnlocked = false;
 	bool bDistractionShotUnlocked = false;
+
+	//
+	bool BarrelVisible = false;
 };
