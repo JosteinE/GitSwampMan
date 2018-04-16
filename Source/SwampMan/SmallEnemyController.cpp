@@ -71,5 +71,7 @@ void ASmallEnemyController::OnHit(UPrimitiveComponent* HitComp,
 	if (OtherComp->GetCollisionProfileName() == "EnemyBullet")
 	{
 		EnemyHealth -= 1;
+
+		OtherActor->Destroy();
 	}
 }

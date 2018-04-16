@@ -84,7 +84,7 @@ public:
 	UPROPERTY(EditAnywhere)
 	float FOVZoomedOut = 90.0f;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int PlayerHealth = 3;
 
 	UPROPERTY(EditAnywhere)

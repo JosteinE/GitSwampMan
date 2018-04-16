@@ -74,7 +74,7 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	{
-		if (PlayerHealth == 0)
+		if (PlayerHealth <= 0)
 		{
 			GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "YOU DIED");
 			APlayerController* const MyPlayer = Cast<APlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
@@ -135,7 +135,7 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 				CamuflageMesh->SetVisibility(true);
 				PlayerBox->SetVisibility(false);
 				BarrelVisible = true;
-				GetCharacterMovement()->MaxWalkSpeed = 0.f;
+				GetCharacterMovement()->MaxWalkSpeed = 50.f;
 			}
 			bFireProjectile = false;
 		}
@@ -306,7 +306,6 @@ void APlayerCharacterWithCamera::OnPlayerOverlap(UPrimitiveComponent* Overlapped
 	// Unlock spells as scrolls are picked up
 	if (OtherActor->GetName() == "wind")
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Wind Happened"));
 		bWindSpellUnlocked = true;
 
 		bWindSelected = true;
@@ -340,7 +339,7 @@ void APlayerCharacterWithCamera::OnWindOverlap(UPrimitiveComponent* OverlappedCo
 
 		//if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
 		OtherComp->AddForce(FVector(BlowDirection * ForceAmount));
-		UE_LOG(LogTemp, Warning, TEXT("Other actor loc: X: %f, Y: %f, Z: %f"), OtherLocation.X, OtherLocation.Y, OtherLocation.Z);
+		//UE_LOG(LogTemp, Warning, TEXT("Other actor loc: X: %f, Y: %f, Z: %f"), OtherLocation.X, OtherLocation.Y, OtherLocation.Z);
 	}
 }
 
@@ -348,10 +347,12 @@ void APlayerCharacterWithCamera::OnPlayerHit(UPrimitiveComponent* HitComp,
 	AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (OtherComp->GetCollisionProfileName() == "EnemyBullet")
+	if (OtherComp->GetCollisionProfileName() == "EnemyBullet" && !BarrelVisible)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("YOU'VE BEEN HIT!"));
 		PlayerHealth -= 1;
+
+		OtherActor->Destroy();
 	}
 }
 
