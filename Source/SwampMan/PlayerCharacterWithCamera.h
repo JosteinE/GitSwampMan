@@ -37,6 +37,9 @@ private:
 	void OnPlayerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
+	void OnPlayerHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UFUNCTION()
 	void OnWindOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 public:	
 	// Called every frame
@@ -82,7 +85,7 @@ public:
 	float FOVZoomedOut = 90.0f;
 
 	UPROPERTY(EditAnywhere)
-	float PlayerHealth = 100.0f;
+	int PlayerHealth = 3;
 
 	UPROPERTY(EditAnywhere)
 	float WindLength = 130.f;

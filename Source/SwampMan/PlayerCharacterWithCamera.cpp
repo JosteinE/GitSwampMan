@@ -12,6 +12,7 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 
 	//Create our mesh
 	PlayerBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerCube"));
+	PlayerBox->SetCollisionProfileName("NoCollision");
 	PlayerBox->SetupAttachment(RootComponent);
 	PlayerBox->SetVisibility(true);
 
@@ -60,6 +61,9 @@ void APlayerCharacterWithCamera::BeginPlay()
 	//Handle overlapping with things such as pickups
 	PlayerCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnPlayerOverlap);
 
+	//Calculate health
+	PlayerCapsule->OnComponentHit.AddDynamic(this, &APlayerCharacterWithCamera::OnPlayerHit);
+
 	//Handle the wind spell functionallity
 	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnWindOverlap);
 }
@@ -68,6 +72,16 @@ void APlayerCharacterWithCamera::BeginPlay()
 void APlayerCharacterWithCamera::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	{
+		if (PlayerHealth == 0)
+		{
+			GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "YOU DIED");
+			APlayerController* const MyPlayer = Cast<APlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
+			MyPlayer->SetPause(true);
+		}
+	}
+
 	//Zoom in if ZoomIn button is down, zoom back out if it's not
 	{
 		if (bZoomingIn)
@@ -94,35 +108,8 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 		{
 			FVector direction(TraceResult.ImpactPoint - GetActorLocation());
 			direction.Z = 0;
-			SetActorRotation(direction.Rotation());
-		}
-	}
-
-	//Handle movement based on our "MoveX" and "MoveY" axes
-	{
-		//Do this if the player is walking
-		if (!MovementInput.IsZero() && !bSprinting)
-		{
-			//Scale our movement input axis values by 100 units per second
-			//MovementInput = MovementInput.GetSafeNormal() * MovementSpeed;
-			//FVector NewLocation = GetActorLocation();
-			//NewLocation += GetActorForwardVector() * MovementInput.X * DeltaTime;
-			//NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
-			//SetActorLocation(NewLocation);
-			
-
-		}
-		//Do this if the player is sprinting
-		if (!MovementInput.IsZero() && bSprinting)
-		{
-			/* BAD CODE
-			MovementInput = MovementInput.GetSafeNormal() * SprintSpeed;
-			FVector NewLocation = GetActorLocation();
-			NewLocation += GetActorForwardVector() * MovementInput.X * DeltaTime;
-			NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
-			SetActorLocation(NewLocation);
-			*/
-			AddMovementInput(GetActorForwardVector(), SprintSpeed);
+			PlayerBox->SetRelativeRotation(direction.Rotation());
+			CamuflageMesh->SetRelativeRotation(direction.Rotation());
 		}
 	}
 
@@ -133,7 +120,7 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 		}
 	}
 
-	{
+	{ // Handle our barrel Mechanic. If the player is barreled, unbarrel them and vice versa
 		if (bCamuflageSpellUnlocked && bCamuflageSelected && bFireProjectile)
 		{
 			if (BarrelVisible)
@@ -194,13 +181,11 @@ void APlayerCharacterWithCamera::SetupPlayerInputComponent(UInputComponent* Play
 void APlayerCharacterWithCamera::MoveForward(float AxisValue)
 {
 	AddMovementInput(GetActorForwardVector(), AxisValue);
-	//MovementInput.X = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
 }
 
 void APlayerCharacterWithCamera::MoveRight(float AxisValue)
 {
 	AddMovementInput(GetActorRightVector(), AxisValue);
-	//MovementInput.Y = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
 }
 
 void APlayerCharacterWithCamera::MouseY(float AxisValue)
@@ -289,7 +274,7 @@ void APlayerCharacterWithCamera::RayCast()
 		FHitResult* HitResult = new FHitResult();
 
 		FVector OrigoToPlayer = GetActorLocation();
-		FVector ForwardVector = GetActorForwardVector();
+		FVector ForwardVector = PlayerBox->GetForwardVector();
 
 		// Make a 45 degree line to the players right
 		FVector PlayerToEndtraceRight = (ForwardVector * WindLength);
@@ -358,3 +343,31 @@ void APlayerCharacterWithCamera::OnWindOverlap(UPrimitiveComponent* OverlappedCo
 		UE_LOG(LogTemp, Warning, TEXT("Other actor loc: X: %f, Y: %f, Z: %f"), OtherLocation.X, OtherLocation.Y, OtherLocation.Z);
 	}
 }
+
+void APlayerCharacterWithCamera::OnPlayerHit(UPrimitiveComponent* HitComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (OtherComp->GetCollisionProfileName() == "EnemyBullet")
+	{
+		UE_LOG(LogTemp, Warning, TEXT("YOU'VE BEEN HIT!"));
+		PlayerHealth -= 1;
+	}
+}
+
+//Bad Codes:
+/*
+	//NEVER USE SetActorLocation FOR YOUR CHARACTER MOVEMENT FUNCTIONS!
+	//Scale our movement input axis values by 100 units per second
+	MovementInput = MovementInput.GetSafeNormal() * MovementSpeed;
+	FVector NewLocation = GetActorLocation();
+	NewLocation += GetActorForwardVector() * MovementInput.X * DeltaTime;
+	NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
+	SetActorLocation(NewLocation);
+
+	//Movement input vertical
+	MovementInput.X = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
+
+	//Movement input horizontal
+	MovementInput.Y = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
+*/

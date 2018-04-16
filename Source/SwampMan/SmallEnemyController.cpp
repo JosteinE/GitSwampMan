@@ -9,8 +9,11 @@ ASmallEnemyController::ASmallEnemyController()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	EnemyCapsule = GetCapsuleComponent();
+
 	//Create our mesh
 	EnemyMeshBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EnemyCube"));
+	EnemyMeshBox->SetCollisionProfileName("NoCollision");
 	EnemyMeshBox->SetupAttachment(RootComponent);
 }
 
@@ -19,12 +22,19 @@ void ASmallEnemyController::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	//Calculate health
+	EnemyCapsule->OnComponentHit.AddDynamic(this, &ASmallEnemyController::OnHit);
 }
 
 // Called every frame
 void ASmallEnemyController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	if (EnemyHealth == 0)
+	{
+		Destroy();
+	}
 
 	// Move the object
 	FVector MyLocation = GetActorLocation();
@@ -54,3 +64,12 @@ void ASmallEnemyController::SetupPlayerInputComponent(UInputComponent* PlayerInp
 
 }
 
+void ASmallEnemyController::OnHit(UPrimitiveComponent* HitComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (OtherComp->GetCollisionProfileName() == "EnemyBullet")
+	{
+		EnemyHealth -= 1;
+	}
+}
