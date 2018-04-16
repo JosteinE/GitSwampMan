@@ -149,6 +149,23 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 			GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
 		}
 	}
+
+	if (bDistractionSelected && bDistractionShotUnlocked && bFireProjectile)
+	{
+		UWorld* world = GetWorld();
+		if (world)
+		{
+			FActorSpawnParameters spawnParams;
+			spawnParams.Owner = this;
+
+			FRotator rotator = PlayerBox->GetComponentRotation();
+			FVector spawnLocation = PlayerBox->GetComponentLocation();
+
+			world->SpawnActor<AActor>(BulletToSpawn, spawnLocation, rotator, spawnParams);
+
+			bFireProjectile = false;
+		}
+	}
 }
 
 // Called to bind functionality to input

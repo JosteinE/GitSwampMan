@@ -60,6 +60,9 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* CamuflageMesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<class AActor> BulletToSpawn;
+
 	UPROPERTY(VisibleAnywhere)
 	class UCapsuleComponent* PlayerCapsule;
 
