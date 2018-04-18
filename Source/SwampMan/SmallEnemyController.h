@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Pawn.h"
+#include "Components/CapsuleComponent.h"
 #include "Classes/Kismet/GameplayStatics.h"
 #include "SmallEnemyController.generated.h"
 
@@ -22,6 +23,10 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+private:
+	UFUNCTION()
+	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -33,11 +38,17 @@ public:
 	class UShapeComponent* EnemyRootBox;
 
 	UPROPERTY(VisibleAnywhere)
+	class UCapsuleComponent* EnemyCapsule;
+
+	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* EnemyMeshBox;
 
 	UPROPERTY(EditAnywhere)
-	float Speed;
+	float Speed = 150.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	AActor* Player;
 
 	UPROPERTY(EditAnywhere)
-	AActor* Player;
+	int EnemyHealth = 1;
 };

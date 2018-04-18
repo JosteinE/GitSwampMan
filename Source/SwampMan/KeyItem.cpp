@@ -40,9 +40,9 @@ void AKeyItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
 	if ((OtherActor != nullptr) && (OtherActor != this) && (OtherComp != nullptr))
 	{
 		FString pickup = FString::Printf(TEXT("You picked up a key and a door was opened."));
-
 		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, pickup);
 		GetWorld()->DestroyActor(Door);
+
 		Destroy();
 	}
 }

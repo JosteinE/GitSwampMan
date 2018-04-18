@@ -2,16 +2,24 @@
 
 #include "PlayerCharacterWithCamera.h"
 
-
 // Sets default values
 APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	PlayerCapsule = GetCapsuleComponent();
+
 	//Create our mesh
 	PlayerBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerCube"));
+	PlayerBox->SetCollisionProfileName("NoCollision");
 	PlayerBox->SetupAttachment(RootComponent);
+	PlayerBox->SetVisibility(true);
+
+	//Create our mesh for the camuflage spell
+	CamuflageMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CamuflageMesh"));
+	CamuflageMesh->SetupAttachment(RootComponent);
+	CamuflageMesh->SetVisibility(false);
 
 	//Create our camera components
 	OurCameraSpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraSpringArm"));
@@ -30,10 +38,13 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 
 	//Take control of the default Player
 	AutoPossessPlayer = EAutoReceiveInput::Player0;
-}
 
-void APlayerCharacterWithCamera::PostEditChangeProperty(FPropertyChangedEvent & PropertyChangedEvent)
-{
+	//Create our wind spell mesh
+	WindMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WindTriangle"));
+	WindMesh->SetupAttachment(PlayerBox);
+	WindMesh->bGenerateOverlapEvents = true;
+	WindMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
+	WindMesh->bHiddenInGame = false;
 }
 
 // Called when the game starts or when spawned
@@ -46,12 +57,30 @@ void APlayerCharacterWithCamera::BeginPlay()
 	PcMouse->bShowMouseCursor = true;
 	PcMouse->bEnableClickEvents = true;
 	PcMouse->bEnableMouseOverEvents = true;
+
+	//Handle overlapping with things such as pickups
+	PlayerCapsule->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnPlayerOverlap);
+
+	//Calculate health
+	PlayerCapsule->OnComponentHit.AddDynamic(this, &APlayerCharacterWithCamera::OnPlayerHit);
+
+	//Handle the wind spell functionallity
+	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnWindOverlap);
 }
 
 // Called every frame
 void APlayerCharacterWithCamera::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	{
+		if (PlayerHealth <= 0)
+		{
+			GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "YOU DIED");
+			APlayerController* const MyPlayer = Cast<APlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
+			MyPlayer->SetPause(true);
+		}
+	}
 
 	//Zoom in if ZoomIn button is down, zoom back out if it's not
 	{
@@ -79,35 +108,62 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 		{
 			FVector direction(TraceResult.ImpactPoint - GetActorLocation());
 			direction.Z = 0;
-			SetActorRotation(direction.Rotation());
+			PlayerBox->SetRelativeRotation(direction.Rotation());
+			CamuflageMesh->SetRelativeRotation(direction.Rotation());
 		}
 	}
 
-	//Handle movement based on our "MoveX" and "MoveY" axes
 	{
-		//Do this if the player is walking
-		if (!MovementInput.IsZero() && !bSprinting)
+		if (bFireProjectile && bWindSelected && bWindSpellUnlocked && !BarrelVisible)
 		{
-			//Scale our movement input axis values by 100 units per second
-			//MovementInput = MovementInput.GetSafeNormal() * MovementSpeed;
-			//FVector NewLocation = GetActorLocation();
-			//NewLocation += GetActorForwardVector() * MovementInput.X * DeltaTime;
-			//NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
-			//SetActorLocation(NewLocation);
-			
-
+			RayCast();
 		}
-		//Do this if the player is sprinting
-		if (!MovementInput.IsZero() && bSprinting)
+	}
+
+	{ // Handle our barrel Mechanic. If the player is barreled, unbarrel them and vice versa
+		if (bCamuflageSpellUnlocked && bCamuflageSelected && bFireProjectile)
 		{
-			/* BAD CODE
-			MovementInput = MovementInput.GetSafeNormal() * SprintSpeed;
-			FVector NewLocation = GetActorLocation();
-			NewLocation += GetActorForwardVector() * MovementInput.X * DeltaTime;
-			NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
-			SetActorLocation(NewLocation);
-			*/
-			AddMovementInput(GetActorForwardVector(), SprintSpeed);
+			if (BarrelVisible)
+			{
+				CamuflageMesh->SetVisibility(false);
+				PlayerBox->SetVisibility(true);
+				BarrelVisible = false;
+				GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
+			}
+			else
+			{
+				CamuflageMesh->SetVisibility(true);
+				PlayerBox->SetVisibility(false);
+				BarrelVisible = true;
+				GetCharacterMovement()->MaxWalkSpeed = 50.f;
+			}
+			bFireProjectile = false;
+		}
+
+		//If the player is barreled and wants to use the wind spell, undo barrel
+		if (BarrelVisible && bWindSelected && bWindSpellUnlocked && bFireProjectile)
+		{
+			CamuflageMesh->SetVisibility(false);
+			PlayerBox->SetVisibility(true);
+			BarrelVisible = false;
+			GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
+		}
+	}
+
+	if (bDistractionSelected && bDistractionShotUnlocked && bFireProjectile)
+	{
+		UWorld* world = GetWorld();
+		if (world)
+		{
+			FActorSpawnParameters spawnParams;
+			spawnParams.Owner = this;
+
+			FRotator rotator = PlayerBox->GetComponentRotation();
+			FVector spawnLocation = PlayerBox->GetComponentLocation();
+
+			world->SpawnActor<AActor>(BulletToSpawn, spawnLocation, rotator, spawnParams);
+
+			bFireProjectile = false;
 		}
 	}
 }
@@ -120,10 +176,15 @@ void APlayerCharacterWithCamera::SetupPlayerInputComponent(UInputComponent* Play
 	//Hook up events for "ZoomIn"
 	InputComponent->BindAction("ZoomIn", IE_Pressed, this, &APlayerCharacterWithCamera::ZoomIn);
 	InputComponent->BindAction("ZoomIn", IE_Released, this, &APlayerCharacterWithCamera::ZoomOut);
+
+	//Hook up action events
 	InputComponent->BindAction("FireProjectile", IE_Pressed, this, &APlayerCharacterWithCamera::ShootingProjectile);
 	InputComponent->BindAction("FireProjectile", IE_Released, this, &APlayerCharacterWithCamera::NotShootingProjectile);
 	InputComponent->BindAction("Sprinting", IE_Pressed, this, &APlayerCharacterWithCamera::IsSprinting);
 	InputComponent->BindAction("Sprinting", IE_Released, this, &APlayerCharacterWithCamera::IsNotSprinting);
+	InputComponent->BindAction("SelectWindSpell", IE_Pressed, this, &APlayerCharacterWithCamera::WindSelected);
+	InputComponent->BindAction("SelectCamuflageSpell", IE_Pressed, this, &APlayerCharacterWithCamera::CamuflageSelected);
+	InputComponent->BindAction("SelectDistractionSpell", IE_Pressed, this, &APlayerCharacterWithCamera::DistractionSelected);
 
 	//Hook up every-frame handling for our four axes
 	InputComponent->BindAxis("MoveForward", this, &APlayerCharacterWithCamera::MoveForward);
@@ -137,13 +198,11 @@ void APlayerCharacterWithCamera::SetupPlayerInputComponent(UInputComponent* Play
 void APlayerCharacterWithCamera::MoveForward(float AxisValue)
 {
 	AddMovementInput(GetActorForwardVector(), AxisValue);
-	//MovementInput.X = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
 }
 
 void APlayerCharacterWithCamera::MoveRight(float AxisValue)
 {
 	AddMovementInput(GetActorRightVector(), AxisValue);
-	//MovementInput.Y = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
 }
 
 void APlayerCharacterWithCamera::MouseY(float AxisValue)
@@ -186,30 +245,147 @@ void APlayerCharacterWithCamera::IsNotSprinting()
 	bSprinting = false;
 }
 
-void APlayerCharacterWithCamera::CalculateHealth(float Delta)
+void APlayerCharacterWithCamera::WindSelected()
 {
-	Health += Delta;
-	CalculateDead();
+	bWindSelected = true;
+	bCamuflageSelected = false;
+	bDistractionSelected = false;
+
+	if (bWindSpellUnlocked)
+	{
+		FString spell = FString::Printf(TEXT("Wind Spell Selected"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, spell);
+	}
 }
 
-void APlayerCharacterWithCamera::CalculateDead()
+void APlayerCharacterWithCamera::CamuflageSelected()
 {
-	if (Health <= 0)
-		isDead = true;
-	else 
-		isDead = false;
+	bWindSelected = false;
+	bCamuflageSelected = true;
+	bDistractionSelected = false;
+
+	if (bCamuflageSpellUnlocked)
+	{
+		FString spell = FString::Printf(TEXT("Camuflage Spell Selected"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, spell);
+	}
 }
 
-#if WITH_EDITOR
-void APlayerCharacterWithCamera::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+void APlayerCharacterWithCamera::DistractionSelected()
 {
-	isDead = false;
-	Health = 3;
+	bWindSelected = false;
+	bCamuflageSelected = false;
+	bDistractionSelected = true;
 
-	Super::PostEditChangeProperty(PropertyChangedEvent);
-
-	CalculateDead();
+	if (bDistractionShotUnlocked)
+	{
+		FString spell = FString::Printf(TEXT("Distraction Shot Selected"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, spell);
+	}
 }
 
+void APlayerCharacterWithCamera::RayCast()
+{
+	{
+		//Raycast a triangle in front of the player that will indicate where the wind spell will be blowing
+		FHitResult* HitResult = new FHitResult();
 
-#endif
+		FVector OrigoToPlayer = GetActorLocation();
+		FVector ForwardVector = PlayerBox->GetForwardVector();
+
+		// Make a 45 degree line to the players right
+		FVector PlayerToEndtraceRight = (ForwardVector * WindLength);
+		PlayerToEndtraceRight = PlayerToEndtraceRight.RotateAngleAxis(WindAngle, FVector::UpVector);
+		FCollisionQueryParams* CQPRight = new FCollisionQueryParams{ "RightDebugLine", false };
+		GetWorld()->DebugDrawTraceTag = CQPRight->TraceTag;
+		GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer, OrigoToPlayer + PlayerToEndtraceRight, ECC_Visibility, *CQPRight);
+
+
+		// Make a 45 degree line to the players left
+		FVector PlayerToEndtraceLeft = (ForwardVector * WindLength);
+		PlayerToEndtraceLeft = PlayerToEndtraceLeft.RotateAngleAxis(-WindAngle, FVector::UpVector);
+		FCollisionQueryParams* CQPLeft = new FCollisionQueryParams{ "LeftDebugLine", false };
+		GetWorld()->DebugDrawTraceTag = CQPLeft->TraceTag;
+		GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer, OrigoToPlayer + PlayerToEndtraceLeft, ECC_Visibility, *CQPLeft);
+
+		//Make the final line, connecting the two, to finish our triangle
+		FCollisionQueryParams* CQPFont = new FCollisionQueryParams{ "FrontDebugLine", false };
+		GetWorld()->DebugDrawTraceTag = CQPFont->TraceTag;
+		GetWorld()->LineTraceSingleByChannel(*HitResult, OrigoToPlayer + PlayerToEndtraceRight, OrigoToPlayer + PlayerToEndtraceLeft, ECC_Visibility, *CQPFont);
+	}
+}
+
+void APlayerCharacterWithCamera::OnPlayerOverlap(UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex, bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	// Unlock spells as scrolls are picked up
+	if (OtherActor->GetName() == "wind")
+	{
+		bWindSpellUnlocked = true;
+
+		bWindSelected = true;
+		bCamuflageSelected = false;
+		bDistractionSelected = false;
+	}
+	if (OtherActor->GetName() == "distraction")
+	{
+		bDistractionShotUnlocked = true;
+	}
+	if (OtherActor->GetName() == "camuflage")
+	{
+		bCamuflageSpellUnlocked = true;
+	}
+}
+
+void APlayerCharacterWithCamera::OnWindOverlap(UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp, 
+	int32 OtherBodyIndex, bool bFromSweep, 
+	const FHitResult& SweepResult)
+{
+	if (bFireProjectile && bWindSpellUnlocked && bWindSelected)
+	{
+		FVector PlayerLocation = this->GetActorLocation();
+		FVector OtherLocation = OtherActor->GetActorLocation();
+
+		FVector BlowDirection = PlayerLocation-OtherLocation;
+
+		BlowDirection.Z = 0.0f;
+		float ForceAmount = -20000.0f;
+
+		//if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
+		OtherComp->AddForce(FVector(BlowDirection * ForceAmount));
+		//UE_LOG(LogTemp, Warning, TEXT("Other actor loc: X: %f, Y: %f, Z: %f"), OtherLocation.X, OtherLocation.Y, OtherLocation.Z);
+	}
+}
+
+void APlayerCharacterWithCamera::OnPlayerHit(UPrimitiveComponent* HitComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+	if (OtherComp->GetCollisionProfileName() == "EnemyBullet" && !BarrelVisible)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("YOU'VE BEEN HIT!"));
+		PlayerHealth -= 1;
+
+		OtherActor->Destroy();
+	}
+}
+
+//Bad Codes:
+/*
+	//NEVER USE SetActorLocation FOR YOUR CHARACTER MOVEMENT FUNCTIONS!
+	//Scale our movement input axis values by 100 units per second
+	MovementInput = MovementInput.GetSafeNormal() * MovementSpeed;
+	FVector NewLocation = GetActorLocation();
+	NewLocation += GetActorForwardVector() * MovementInput.X * DeltaTime;
+	NewLocation += GetActorRightVector() * MovementInput.Y * DeltaTime;
+	SetActorLocation(NewLocation);
+
+	//Movement input vertical
+	MovementInput.X = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
+
+	//Movement input horizontal
+	MovementInput.Y = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
+*/

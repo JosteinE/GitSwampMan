@@ -11,6 +11,9 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/StaticMesh.h"
+#include "Runtime/Engine/Public/DrawDebugHelpers.h"
+#include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "PlayerCharacterWithCamera.generated.h"
 
 UCLASS()
@@ -22,31 +25,22 @@ public:
 	// Sets default values for this character's properties
 	APlayerCharacterWithCamera();
 
-	// Health
-	UPROPERTY(BlueprintReadWrite, EditorApplyMirror, Category = "Base Character")
-		float Health = 3;
-
-	// Checks if the character is dead.
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Base Character")
-		bool isDead = false;
-
-	// Calculates if the character is dead based on health.
-	virtual void CalculateDead();
-
-
-	UFUNCTION(BlueprintCallable, Category = "Base Character")
-		virtual void CalculateHealth(float delta);
-
-#if WITH_EDITOR
-	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-		override;
-#endif 
-
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+private:
+	// Cast a ray
+	void RayCast();
 
+	UFUNCTION()
+	void OnPlayerOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnPlayerHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+
+	UFUNCTION()
+	void OnWindOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -63,11 +57,23 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* PlayerBox;
 
-	UPROPERTY(EditAnywhere)
-	float MovementSpeed = 500.0f;
+	UPROPERTY(VisibleAnywhere)
+	class UStaticMeshComponent* CamuflageMesh;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TSubclassOf<class AActor> BulletToSpawn;
+
+	UPROPERTY(VisibleAnywhere)
+	class UCapsuleComponent* PlayerCapsule;
+
+	UPROPERTY(VisibleAnywhere)
+	class UStaticMeshComponent* WindMesh;
 
 	UPROPERTY(EditAnywhere)
-	float SprintSpeed = 850.0f;
+	float MovementSpeed = 300.0f;
+
+	UPROPERTY(EditAnywhere)
+	float SprintSpeed = 200.0f;
 
 	UPROPERTY(EditAnywhere)
 	float ZoomedInCameraDistance = 300.0f;
@@ -81,8 +87,14 @@ public:
 	UPROPERTY(EditAnywhere)
 	float FOVZoomedOut = 90.0f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int PlayerHealth = 3;
+
 	UPROPERTY(EditAnywhere)
-	float PlayerHealth = 100.0f;
+	float WindLength = 130.f;
+
+	UPROPERTY(EditAnywhere)
+	float WindAngle = 20.f;
 
 	//Input variables
 	APlayerController* PcMouse;
@@ -92,6 +104,9 @@ public:
 	bool bZoomingIn;
 	bool bFireProjectile;
 	bool bSprinting;
+	bool bWindSelected;
+	bool bCamuflageSelected;
+	bool bDistractionSelected;
 
 	//Input functions
 	void MoveForward(float AxisValue);
@@ -104,7 +119,15 @@ public:
 	void NotShootingProjectile();
 	void IsSprinting();
 	void IsNotSprinting();
+	void WindSelected();
+	void CamuflageSelected();
+	void DistractionSelected();
 
-	
-	
+	//Spells unlocked
+	bool bWindSpellUnlocked = false;
+	bool bCamuflageSpellUnlocked = false;
+	bool bDistractionShotUnlocked = false;
+
+	//
+	bool BarrelVisible = false;
 };
