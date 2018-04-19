@@ -38,9 +38,6 @@ private:
 
 	UFUNCTION()
 	void OnPlayerHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
-
-	UFUNCTION()
-	void OnWindOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -90,11 +87,20 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	int PlayerHealth = 3;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float PlayerMana = 100.f;
+
+	UPROPERTY(EditAnywhere)
+	float WindForce = -200.0f;
+
 	UPROPERTY(EditAnywhere)
 	float WindLength = 130.f;
 
 	UPROPERTY(EditAnywhere)
 	float WindAngle = 20.f;
+
+	UPROPERTY(EditAnywhere)
+	bool GodMode = false;
 
 	//Input variables
 	APlayerController* PcMouse;

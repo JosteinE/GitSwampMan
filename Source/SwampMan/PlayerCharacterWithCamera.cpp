@@ -63,9 +63,6 @@ void APlayerCharacterWithCamera::BeginPlay()
 
 	//Calculate health
 	PlayerCapsule->OnComponentHit.AddDynamic(this, &APlayerCharacterWithCamera::OnPlayerHit);
-
-	//Handle the wind spell functionallity
-	WindMesh->OnComponentBeginOverlap.AddDynamic(this, &APlayerCharacterWithCamera::OnWindOverlap);
 }
 
 // Called every frame
@@ -81,6 +78,71 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 			MyPlayer->SetPause(true);
 		}
 	}
+
+	{ // Calculate Player Mana
+		if (bFireProjectile && bWindSpellUnlocked && bWindSelected && !GodMode)
+		{
+			PlayerMana -= 40.f * DeltaTime;
+			UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
+		}
+
+		if (BarrelVisible && !GodMode)
+		{
+			PlayerMana -= 15.f * DeltaTime;
+			UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
+		}
+
+		if (PlayerMana <= 0.f && !GodMode)
+		{
+			GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "Out of Mana!");
+
+			if (BarrelVisible)
+			{
+				CamuflageMesh->SetVisibility(false);
+				PlayerBox->SetVisibility(true);
+				BarrelVisible = false;
+				GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
+			}
+
+			bFireProjectile = false;
+		}
+
+		if (PlayerMana < 100 && !bFireProjectile && !BarrelVisible && !GodMode)
+		{
+			PlayerMana += 20.f * DeltaTime;
+
+			UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
+
+			if (PlayerMana == 100)
+			{
+				GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "Maximum Mana");
+			}
+		}
+	}
+
+	///////////////////////
+	if(bWindSelected && bWindSpellUnlocked && bFireProjectile)
+	{
+		TArray<UPrimitiveComponent*> OverlappingComponents;
+
+		WindMesh->GetOverlappingComponents(OverlappingComponents);
+
+		for (auto& Element : OverlappingComponents)
+		{
+			if (Element != PlayerCapsule)
+			{
+				FVector PlayerLocation = this->GetActorLocation();
+				FVector OtherLocation = Element->GetComponentLocation();
+
+				FVector BlowDirection = PlayerLocation - OtherLocation;
+
+				BlowDirection.Z = 0.0f;
+
+				Element->AddForce(FVector(BlowDirection * WindForce));
+			}
+		}
+	}
+	///////////////////////
 
 	//Zoom in if ZoomIn button is down, zoom back out if it's not
 	{
@@ -135,13 +197,13 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 				CamuflageMesh->SetVisibility(true);
 				PlayerBox->SetVisibility(false);
 				BarrelVisible = true;
-				GetCharacterMovement()->MaxWalkSpeed = 50.f;
+				GetCharacterMovement()->MaxWalkSpeed = 100.f;
 			}
 			bFireProjectile = false;
 		}
 
-		//If the player is barreled and wants to use the wind spell, undo barrel
-		if (BarrelVisible && bWindSelected && bWindSpellUnlocked && bFireProjectile)
+		//If the player is barreled and wants to use the wind or distraction spell, undo barrel
+		if (BarrelVisible && ((bWindSelected && bWindSpellUnlocked) || (bDistractionSelected && bDistractionSelected)) && bFireProjectile)
 		{
 			CamuflageMesh->SetVisibility(false);
 			PlayerBox->SetVisibility(true);
@@ -152,17 +214,30 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 
 	if (bDistractionSelected && bDistractionShotUnlocked && bFireProjectile)
 	{
-		UWorld* world = GetWorld();
-		if (world)
+		if (PlayerMana >= 50.f)
 		{
-			FActorSpawnParameters spawnParams;
-			spawnParams.Owner = this;
+			UWorld* world = GetWorld();
+			if (world)
+			{
+				if (!GodMode)
+				{
+					PlayerMana -= 50.f;
+					UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
+				}
 
-			FRotator rotator = PlayerBox->GetComponentRotation();
-			FVector spawnLocation = PlayerBox->GetComponentLocation();
+				FActorSpawnParameters spawnParams;
+				spawnParams.Owner = this;
 
-			world->SpawnActor<AActor>(BulletToSpawn, spawnLocation, rotator, spawnParams);
+				FRotator rotator = PlayerBox->GetComponentRotation();
+				FVector spawnLocation = PlayerBox->GetComponentLocation();
 
+				world->SpawnActor<AActor>(BulletToSpawn, spawnLocation, rotator, spawnParams);
+
+				bFireProjectile = false;
+			}
+		}
+		else
+		{
 			bFireProjectile = false;
 		}
 	}
@@ -339,35 +414,17 @@ void APlayerCharacterWithCamera::OnPlayerOverlap(UPrimitiveComponent* Overlapped
 	}
 }
 
-void APlayerCharacterWithCamera::OnWindOverlap(UPrimitiveComponent* OverlappedComp,
-	AActor* OtherActor, UPrimitiveComponent* OtherComp, 
-	int32 OtherBodyIndex, bool bFromSweep, 
-	const FHitResult& SweepResult)
-{
-	if (bFireProjectile && bWindSpellUnlocked && bWindSelected)
-	{
-		FVector PlayerLocation = this->GetActorLocation();
-		FVector OtherLocation = OtherActor->GetActorLocation();
-
-		FVector BlowDirection = PlayerLocation-OtherLocation;
-
-		BlowDirection.Z = 0.0f;
-		float ForceAmount = -20000.0f;
-
-		//if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
-		OtherComp->AddForce(FVector(BlowDirection * ForceAmount));
-		//UE_LOG(LogTemp, Warning, TEXT("Other actor loc: X: %f, Y: %f, Z: %f"), OtherLocation.X, OtherLocation.Y, OtherLocation.Z);
-	}
-}
-
 void APlayerCharacterWithCamera::OnPlayerHit(UPrimitiveComponent* HitComp,
 	AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	FVector NormalImpulse, const FHitResult& Hit)
 {
 	if (OtherComp->GetCollisionProfileName() == "EnemyBullet" && !BarrelVisible)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("YOU'VE BEEN HIT!"));
-		PlayerHealth -= 1;
+		if (!GodMode)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("YOU'VE BEEN HIT!"));
+			PlayerHealth -= 1;
+		}
 
 		OtherActor->Destroy();
 	}
@@ -388,4 +445,26 @@ void APlayerCharacterWithCamera::OnPlayerHit(UPrimitiveComponent* HitComp,
 
 	//Movement input horizontal
 	MovementInput.Y = FMath::Clamp<float>(AxisValue, -1.0f, 1.0f);
+
+	//BeginOverlap would not affect actors already inside the wind mesh, so had to use GetOverlappingComponents instead
+	void APlayerCharacterWithCamera::OnWindOverlap(UPrimitiveComponent* OverlappedComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex, bool bFromSweep,
+	const FHitResult& SweepResult)
+	{
+	if (bFireProjectile && bWindSpellUnlocked && bWindSelected)
+	{
+	FVector PlayerLocation = this->GetActorLocation();
+	FVector OtherLocation = OtherActor->GetActorLocation();
+
+	FVector BlowDirection = PlayerLocation-OtherLocation;
+
+	BlowDirection.Z = 0.0f;
+	float ForceAmount = -20000.0f;
+
+	//if ((OtherActor != nullptr) && (OtherActor != this) && (OverlappedComp != nullptr) && OverlappedComp->IsSimulatingPhysics())
+	OtherComp->AddForce(FVector(BlowDirection * ForceAmount));
+	//UE_LOG(LogTemp, Warning, TEXT("Other actor loc: X: %f, Y: %f, Z: %f"), OtherLocation.X, OtherLocation.Y, OtherLocation.Z);
+	}
+	}
 */
