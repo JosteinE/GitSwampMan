@@ -88,7 +88,7 @@ public:
 	float FOVZoomedOut = 90.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int PlayerHealth = 3;
+	int32 PlayerHealth = 3;
 
 	UPROPERTY(EditAnywhere)
 	float WindLength = 130.f;
