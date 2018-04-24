@@ -15,7 +15,7 @@ AScrollItem::AScrollItem()
 	this->RootComponent = SceneComponent;
 
 	this->ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ItemMesh"));
-	this->ItemMesh->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepWorldTransform);
+	this->ItemMesh->SetupAttachment(RootComponent);
 
 	this->RotationRate = FRotator(45.0f, 45.0f, 0.0f);
 
@@ -26,7 +26,7 @@ AScrollItem::AScrollItem()
 	this->BoxCollider->bGenerateOverlapEvents = true;
 	this->BoxCollider->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 	this->BoxCollider->OnComponentBeginOverlap.AddDynamic(this, &AScrollItem::OnOverlapBegin);
-	this->BoxCollider->AttachToComponent(this->RootComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	this->BoxCollider->SetupAttachment(RootComponent);
 }
 
 // Overlap handler

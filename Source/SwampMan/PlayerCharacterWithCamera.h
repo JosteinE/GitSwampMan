@@ -128,12 +128,22 @@ public:
 	void WindSelected();
 	void CamuflageSelected();
 	void DistractionSelected();
+	void ToggleGodMode();
 
 	//Spells unlocked
 	bool bWindSpellUnlocked = false;
 	bool bCamuflageSpellUnlocked = false;
 	bool bDistractionShotUnlocked = false;
 
+	//
+	void PlayerRotation();
+	void PlayerDead();
+	void PlayerManaManager(float DeltaTime);
+	void SpellManager();
+	void WindSpellManager();
+	void CamuflageSpellManager();
+	void DistractionSpellManager();
+	void ZoomManager(float DeltaTime);
 	//
 	bool BarrelVisible = false;
 };

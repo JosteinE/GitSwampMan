@@ -14,14 +14,14 @@ AOpenDoor::AOpenDoor()
 	this->RootComponent = SceneComponent;
 
 	this->DoorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("DoorMesh"));
-	this->DoorMesh->AttachToComponent(this->RootComponent, FAttachmentTransformRules::KeepWorldTransform);
+	this->DoorMesh->SetupAttachment(RootComponent);
 
 	// Create Collider
 	this->BoxCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("BoxCollider"));
 	this->BoxCollider->bGenerateOverlapEvents = false;
 	this->BoxCollider->SetWorldScale3D(FVector(1.0f, 1.0f, 1.0f));
 	this->BoxCollider->SetCollisionProfileName(TEXT("BlockAll"));
-	this->BoxCollider->AttachToComponent(this->RootComponent, FAttachmentTransformRules::SnapToTargetNotIncludingScale);
+	this->BoxCollider->SetupAttachment(RootComponent);
 }
 
 // Called when the game starts or when spawned

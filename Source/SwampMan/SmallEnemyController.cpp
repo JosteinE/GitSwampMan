@@ -10,7 +10,7 @@ ASmallEnemyController::ASmallEnemyController()
 	PrimaryActorTick.bCanEverTick = true;
 
 	EnemyCapsule = GetCapsuleComponent();
-
+	EnemyCapsule->SetSimulatePhysics(false);
 	//Create our mesh
 	EnemyMeshBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("EnemyCube"));
 	EnemyMeshBox->SetCollisionProfileName("NoCollision");
@@ -42,15 +42,7 @@ void ASmallEnemyController::Tick(float DeltaTime)
 	FVector TargetDestination = (PlayerLocation - MyLocation);
 	TargetDestination.Z = 0;
 	
-	/*
-	// Normalize it's speed, so it moves at a constant rate.
-	TargetDestination.Normalize();
-
-	MyLocation += TargetDestination * DeltaTime * Speed;
-	SetActorLocation(MyLocation);
-	*/
-
-	AddMovementInput(GetActorForwardVector(), Speed);
+	AddMovementInput(TargetDestination, GetCharacterMovement()->MaxWalkSpeed);
 
 	// Rotate to face the player
 	FRotator FacePlayer = FRotationMatrix::MakeFromX(TargetDestination).Rotator();

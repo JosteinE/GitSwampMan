@@ -70,177 +70,12 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	{
-		if (PlayerHealth <= 0)
-		{
-			GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "YOU DIED");
-			APlayerController* const MyPlayer = Cast<APlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
-			MyPlayer->SetPause(true);
-		}
-	}
+	PlayerRotation(); // Rotate the mesh, so it always looks at the cursors location.
+	PlayerDead(); // Freeze the game if the players health reaches 0.
+	SpellManager(); // Control which spell is currently selected, if it's unlocked and if the player is firing. 
+	PlayerManaManager(DeltaTime); // Subtract different values of mana, depending on which spell is being used.
+	ZoomManager(DeltaTime); // While right click is held down, zoom in on the character. 
 
-	{ // Calculate Player Mana
-		if (bFireProjectile && bWindSpellUnlocked && bWindSelected && !GodMode)
-		{
-			PlayerMana -= 40.f * DeltaTime;
-			UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
-		}
-
-		if (BarrelVisible && !GodMode)
-		{
-			PlayerMana -= 15.f * DeltaTime;
-			UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
-		}
-
-		if (PlayerMana <= 0.f && !GodMode)
-		{
-			GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "Out of Mana!");
-
-			if (BarrelVisible)
-			{
-				CamuflageMesh->SetVisibility(false);
-				PlayerBox->SetVisibility(true);
-				BarrelVisible = false;
-				GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
-			}
-
-			bFireProjectile = false;
-		}
-
-		if (PlayerMana < 100 && !bFireProjectile && !BarrelVisible && !GodMode)
-		{
-			PlayerMana += 20.f * DeltaTime;
-
-			UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
-
-			if (PlayerMana == 100)
-			{
-				GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "Maximum Mana");
-			}
-		}
-	}
-
-	///////////////////////
-	if(bWindSelected && bWindSpellUnlocked && bFireProjectile)
-	{
-		TArray<UPrimitiveComponent*> OverlappingComponents;
-
-		WindMesh->GetOverlappingComponents(OverlappingComponents);
-
-		for (auto& Element : OverlappingComponents)
-		{
-			if (Element != PlayerCapsule)
-			{
-				FVector PlayerLocation = this->GetActorLocation();
-				FVector OtherLocation = Element->GetComponentLocation();
-
-				FVector BlowDirection = PlayerLocation - OtherLocation;
-
-				BlowDirection.Z = 0.0f;
-
-				Element->AddForce(FVector(BlowDirection * WindForce));
-			}
-		}
-	}
-	///////////////////////
-
-	//Zoom in if ZoomIn button is down, zoom back out if it's not
-	{
-		if (bZoomingIn)
-		{
-			ZoomFactor += DeltaTime / 0.5f;         //Zoom in over half a second
-		}
-		else
-		{
-			ZoomFactor -= DeltaTime / 0.25f;        //Zoom out over a quarter of a second
-		}
-		ZoomFactor = FMath::Clamp<float>(ZoomFactor, 0.0f, 1.0f);
-		//Blend our camera's FOV and our SpringArm's length based on ZoomFactor
-		OurCamera->FieldOfView = FMath::Lerp<float>(FOVZoomedOut, FOVZoomedIn, ZoomFactor);
-		OurCameraSpringArm->TargetArmLength = FMath::Lerp<float>(ZoomedOutCameraDistance, ZoomedInCameraDistance, ZoomFactor);
-	}
-
-	//Rotate our actor's yaw based on cursor location
-	//Trace cursor location via a ray from the cursor to the ground.
-	{
-		APlayerController* PlayerController = Cast<APlayerController>(GetController());
-
-		FHitResult TraceResult(ForceInit);
-		if (PlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_WorldDynamic, false, TraceResult))
-		{
-			FVector direction(TraceResult.ImpactPoint - GetActorLocation());
-			direction.Z = 0;
-			PlayerBox->SetRelativeRotation(direction.Rotation());
-			CamuflageMesh->SetRelativeRotation(direction.Rotation());
-		}
-	}
-
-	{
-		if (bFireProjectile && bWindSelected && bWindSpellUnlocked && !BarrelVisible)
-		{
-			RayCast();
-		}
-	}
-
-	{ // Handle our barrel Mechanic. If the player is barreled, unbarrel them and vice versa
-		if (bCamuflageSpellUnlocked && bCamuflageSelected && bFireProjectile)
-		{
-			if (BarrelVisible)
-			{
-				CamuflageMesh->SetVisibility(false);
-				PlayerBox->SetVisibility(true);
-				BarrelVisible = false;
-				GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
-			}
-			else
-			{
-				CamuflageMesh->SetVisibility(true);
-				PlayerBox->SetVisibility(false);
-				BarrelVisible = true;
-				GetCharacterMovement()->MaxWalkSpeed = 100.f;
-			}
-			bFireProjectile = false;
-		}
-
-		//If the player is barreled and wants to use the wind or distraction spell, undo barrel
-		if (BarrelVisible && ((bWindSelected && bWindSpellUnlocked) || (bDistractionSelected && bDistractionSelected)) && bFireProjectile)
-		{
-			CamuflageMesh->SetVisibility(false);
-			PlayerBox->SetVisibility(true);
-			BarrelVisible = false;
-			GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
-		}
-	}
-
-	if (bDistractionSelected && bDistractionShotUnlocked && bFireProjectile)
-	{
-		if (PlayerMana >= 50.f)
-		{
-			UWorld* world = GetWorld();
-			if (world)
-			{
-				if (!GodMode)
-				{
-					PlayerMana -= 50.f;
-					UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
-				}
-
-				FActorSpawnParameters spawnParams;
-				spawnParams.Owner = this;
-
-				FRotator rotator = PlayerBox->GetComponentRotation();
-				FVector spawnLocation = PlayerBox->GetComponentLocation();
-
-				world->SpawnActor<AActor>(BulletToSpawn, spawnLocation, rotator, spawnParams);
-
-				bFireProjectile = false;
-			}
-		}
-		else
-		{
-			bFireProjectile = false;
-		}
-	}
 }
 
 // Called to bind functionality to input
@@ -260,6 +95,7 @@ void APlayerCharacterWithCamera::SetupPlayerInputComponent(UInputComponent* Play
 	InputComponent->BindAction("SelectWindSpell", IE_Pressed, this, &APlayerCharacterWithCamera::WindSelected);
 	InputComponent->BindAction("SelectCamuflageSpell", IE_Pressed, this, &APlayerCharacterWithCamera::CamuflageSelected);
 	InputComponent->BindAction("SelectDistractionSpell", IE_Pressed, this, &APlayerCharacterWithCamera::DistractionSelected);
+	InputComponent->BindAction("ToggleGodMode", IE_Pressed, this, &APlayerCharacterWithCamera::ToggleGodMode);
 
 	//Hook up every-frame handling for our four axes
 	InputComponent->BindAxis("MoveForward", this, &APlayerCharacterWithCamera::MoveForward);
@@ -356,6 +192,209 @@ void APlayerCharacterWithCamera::DistractionSelected()
 	{
 		FString spell = FString::Printf(TEXT("Distraction Shot Selected"));
 		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, spell);
+	}
+}
+
+void APlayerCharacterWithCamera::ToggleGodMode()
+{
+	if (GodMode)
+	{
+		GodMode = false;
+
+		FString OnOff = FString::Printf(TEXT("GodMode off"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, OnOff);
+	}
+	else
+	{
+		GodMode = true;
+		PlayerMana = 100.f;
+		PlayerHealth = 3;
+
+		FString OnOff = FString::Printf(TEXT("GodMode on"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, OnOff);
+	}
+}
+
+void APlayerCharacterWithCamera::PlayerManaManager(float DeltaTime)
+{
+	if (bFireProjectile && bWindSpellUnlocked && bWindSelected && !GodMode)
+	{
+		PlayerMana -= 40.f * DeltaTime;
+		UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
+	}
+
+	if (BarrelVisible && !GodMode)
+	{
+		PlayerMana -= 15.f * DeltaTime;
+		UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
+	}
+
+	if (PlayerMana <= 0.f && !GodMode)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "Out of Mana!");
+
+		if (BarrelVisible)
+		{
+			CamuflageMesh->SetVisibility(false);
+			PlayerBox->SetVisibility(true);
+			BarrelVisible = false;
+			GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
+		}
+
+		bFireProjectile = false;
+	}
+
+	if (PlayerMana < 100 && !bFireProjectile && !BarrelVisible && !GodMode)
+	{
+		PlayerMana += 20.f * DeltaTime;
+
+		UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
+
+		if (PlayerMana == 100)
+		{
+			GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "Maximum Mana");
+		}
+	}
+}
+
+void APlayerCharacterWithCamera::SpellManager()
+{
+	//Wind Spell
+	if (bWindSelected && bWindSpellUnlocked && bFireProjectile)
+	{
+		WindSpellManager();
+		RayCast();
+	}
+
+	//Camuflage Spell
+	if (bCamuflageSpellUnlocked && bCamuflageSelected && bFireProjectile)
+	{
+		CamuflageSpellManager();
+		bFireProjectile = false;
+	}
+
+	//Distraction Spell
+	if (bDistractionSelected && bDistractionShotUnlocked && bFireProjectile)
+	{
+		DistractionSpellManager();
+		bFireProjectile = false;
+	}
+}
+
+void APlayerCharacterWithCamera::WindSpellManager()
+{	// Gather all of the components overlapping our wind mesh and push them away from the player
+	
+	TArray<UPrimitiveComponent*> OverlappingComponents;
+	WindMesh->GetOverlappingComponents(OverlappingComponents);
+
+	for (auto& Element : OverlappingComponents)
+	{
+		if (Element != PlayerCapsule)
+		{
+			FVector PlayerLocation = this->GetActorLocation();
+			FVector OtherLocation = Element->GetComponentLocation();
+
+			FVector BlowDirection = PlayerLocation - OtherLocation;
+
+			BlowDirection.Z = 0.0f;
+
+			Element->AddForce(FVector(BlowDirection * WindForce));
+		}
+	}
+}
+
+void APlayerCharacterWithCamera::CamuflageSpellManager()
+{
+	if (BarrelVisible)
+	{
+		CamuflageMesh->SetVisibility(false);
+		PlayerBox->SetVisibility(true);
+		BarrelVisible = false;
+		GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
+	}
+	else
+	{
+		CamuflageMesh->SetVisibility(true);
+		PlayerBox->SetVisibility(false);
+		BarrelVisible = true;
+		GetCharacterMovement()->MaxWalkSpeed = 100.f;
+	}
+
+	//If the player is barreled and wants to use the wind or distraction spell, undo barrel
+	if (BarrelVisible && ((bWindSelected && bWindSpellUnlocked) || (bDistractionSelected && bDistractionSelected)) && bFireProjectile)
+	{
+		CamuflageMesh->SetVisibility(false);
+		PlayerBox->SetVisibility(true);
+		BarrelVisible = false;
+		GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
+	}
+}
+
+void APlayerCharacterWithCamera::DistractionSpellManager()
+{
+	if (PlayerMana >= 50.f)
+	{
+		UWorld* world = GetWorld();
+		if (world)
+		{
+			if (!GodMode)
+			{
+				PlayerMana -= 50.f;
+				UE_LOG(LogTemp, Warning, TEXT("Mana status: %f"), PlayerMana);
+			}
+
+			FActorSpawnParameters spawnParams;
+			spawnParams.Owner = this;
+
+			FRotator rotator = PlayerBox->GetComponentRotation();
+			FVector spawnLocation = PlayerBox->GetComponentLocation();
+
+			world->SpawnActor<AActor>(BulletToSpawn, spawnLocation, rotator, spawnParams);
+		}
+	}
+}
+
+void APlayerCharacterWithCamera::ZoomManager(float DeltaTime)
+{
+	//Zoom in if ZoomIn button is down, zoom back out if it's not
+	if (bZoomingIn)
+	{
+		ZoomFactor += DeltaTime / 0.5f;         //Zoom in over half a second
+	}
+	else
+	{
+		ZoomFactor -= DeltaTime / 0.25f;        //Zoom out over a quarter of a second
+	}
+	ZoomFactor = FMath::Clamp<float>(ZoomFactor, 0.0f, 1.0f);
+	
+	//Blend our camera's FOV and our SpringArm's length based on ZoomFactor
+	OurCamera->FieldOfView = FMath::Lerp<float>(FOVZoomedOut, FOVZoomedIn, ZoomFactor);
+	OurCameraSpringArm->TargetArmLength = FMath::Lerp<float>(ZoomedOutCameraDistance, ZoomedInCameraDistance, ZoomFactor);
+}
+
+void APlayerCharacterWithCamera::PlayerRotation()
+{
+	//Rotate our actor's yaw based on cursor location
+	//Trace cursor location via a ray from the cursor to the ground.
+	APlayerController* PlayerController = Cast<APlayerController>(GetController());
+
+	FHitResult TraceResult(ForceInit);
+	if (PlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_WorldDynamic, false, TraceResult))
+	{
+		FVector direction(TraceResult.ImpactPoint - GetActorLocation());
+		direction.Z = 0;
+		PlayerBox->SetRelativeRotation(direction.Rotation());
+		CamuflageMesh->SetRelativeRotation(direction.Rotation());
+	}
+}
+
+void APlayerCharacterWithCamera::PlayerDead()
+{
+	if (PlayerHealth <= 0)
+	{
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "YOU DIED");
+		APlayerController* const MyPlayer = Cast<APlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
+		MyPlayer->SetPause(true);
 	}
 }
 

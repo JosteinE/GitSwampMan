@@ -7,6 +7,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/Pawn.h"
 #include "Components/CapsuleComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Classes/Kismet/GameplayStatics.h"
 #include "SmallEnemyController.generated.h"
 
@@ -42,9 +43,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* EnemyMeshBox;
-
-	UPROPERTY(EditAnywhere)
-	float Speed = 150.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	AActor* Player;
