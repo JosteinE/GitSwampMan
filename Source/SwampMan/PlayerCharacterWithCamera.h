@@ -13,6 +13,7 @@
 #include "Engine/StaticMesh.h"
 #include "Runtime/Engine/Public/DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
+#include "UObject/ConstructorHelpers.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "PlayerCharacterWithCamera.generated.h"
 
@@ -84,11 +85,20 @@ public:
 	UPROPERTY(EditAnywhere)
 	float FOVZoomedOut = 90.0f;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = HUD)
 	int PlayerHealth = 3;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = HUD)
 	float PlayerMana = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = HUD)
+	bool bWindSpellUnlocked = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = HUD)
+	bool bCamuflageSpellUnlocked = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = HUD)
+	bool bDistractionShotUnlocked = false;
 
 	UPROPERTY(EditAnywhere)
 	float WindForce = -200.0f;
@@ -129,11 +139,6 @@ public:
 	void CamuflageSelected();
 	void DistractionSelected();
 	void ToggleGodMode();
-
-	//Spells unlocked
-	bool bWindSpellUnlocked = false;
-	bool bCamuflageSpellUnlocked = false;
-	bool bDistractionShotUnlocked = false;
 
 	//
 	void PlayerRotation();
