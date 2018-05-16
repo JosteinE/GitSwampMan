@@ -104,6 +104,9 @@ public:
 	float WindForce = -200.0f;
 
 	UPROPERTY(EditAnywhere)
+	float WindPushBackForce = 50.f;
+
+	UPROPERTY(EditAnywhere)
 	float WindLength = 130.f;
 
 	UPROPERTY(EditAnywhere)

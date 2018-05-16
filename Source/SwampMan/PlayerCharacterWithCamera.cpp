@@ -75,7 +75,6 @@ void APlayerCharacterWithCamera::Tick(float DeltaTime)
 	SpellManager(); // Control which spell is currently selected, if it's unlocked and if the player is firing. 
 	PlayerManaManager(DeltaTime); // Subtract different values of mana, depending on which spell is being used.
 	ZoomManager(DeltaTime); // While right click is held down, zoom in on the character. 
-
 }
 
 // Called to bind functionality to input
@@ -262,8 +261,18 @@ void APlayerCharacterWithCamera::SpellManager()
 	//Wind Spell
 	if (bWindSelected && bWindSpellUnlocked && bFireProjectile)
 	{
+		CamuflageMesh->SetVisibility(false);
+		PlayerBox->SetVisibility(true);
+		BarrelVisible = false;
+
 		WindSpellManager();
 		RayCast();
+	}
+
+	//Return to default movement speed
+	if (!BarrelVisible && !bFireProjectile)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
 	}
 
 	//Camuflage Spell
@@ -289,7 +298,7 @@ void APlayerCharacterWithCamera::WindSpellManager()
 
 	for (auto& Element : OverlappingComponents)
 	{
-		if (Element != PlayerCapsule)
+		if(Element != PlayerCapsule)
 		{
 			FVector PlayerLocation = this->GetActorLocation();
 			FVector OtherLocation = Element->GetComponentLocation();
@@ -299,6 +308,16 @@ void APlayerCharacterWithCamera::WindSpellManager()
 			BlowDirection.Z = 0.0f;
 
 			Element->AddForce(FVector(BlowDirection * WindForce));
+		}
+		else
+		{ // If the component is the PlayerCapsule, add a slight force that pushes the player backwards
+			if (PlayerCapsule->GetForwardVector() != PlayerBox->GetForwardVector())
+			{
+				FVector PlayerPushBack = this->PlayerBox->GetForwardVector();
+				PlayerPushBack.Z = 0;
+				GetCharacterMovement()->MaxWalkSpeed = MovementSpeed + WindPushBackForce;
+				AddMovementInput(-PlayerPushBack, WindPushBackForce/10);
+			}
 		}
 	}
 }
@@ -393,8 +412,8 @@ void APlayerCharacterWithCamera::PlayerDead()
 	if (PlayerHealth <= 0)
 	{
 		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "YOU DIED");
-		APlayerController* const MyPlayer = Cast<APlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
-		MyPlayer->SetPause(true);
+		//APlayerController* const MyPlayer = Cast<APlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
+		//MyPlayer->SetPause(true);
 	}
 }
 
