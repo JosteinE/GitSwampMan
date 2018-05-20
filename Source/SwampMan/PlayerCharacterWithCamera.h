@@ -14,6 +14,7 @@
 #include "Runtime/Engine/Public/DrawDebugHelpers.h"
 #include "Components/CapsuleComponent.h"
 #include "UObject/ConstructorHelpers.h"
+#include "Runtime/Engine/Classes/Components/SkeletalMeshComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "PlayerCharacterWithCamera.generated.h"
 
@@ -52,11 +53,17 @@ public:
 	UPROPERTY(EditAnywhere)
 	class UCameraComponent* OurCamera;
 
-	UPROPERTY(VisibleAnywhere)
-	class UStaticMeshComponent* PlayerBox;
+	//UPROPERTY(VisibleAnywhere)
+	//class UStaticMeshComponent* PlayerBox;
+
+	//UPROPERTY(VisibleAnywhere)
+	//class UStaticMeshComponent* CamuflageMesh;
 
 	UPROPERTY(VisibleAnywhere)
-	class UStaticMeshComponent* CamuflageMesh;
+	USkeletalMeshComponent* PlayerBox;
+
+	UPROPERTY(VisibleAnywhere)
+	USkeletalMeshComponent* CamuflageMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<class AActor> BulletToSpawn;

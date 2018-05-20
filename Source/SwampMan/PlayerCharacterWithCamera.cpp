@@ -11,13 +11,13 @@ APlayerCharacterWithCamera::APlayerCharacterWithCamera()
 	PlayerCapsule = GetCapsuleComponent();
 
 	//Create our mesh
-	PlayerBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PlayerCube"));
+	PlayerBox = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("PlayerCube"));
 	PlayerBox->SetCollisionProfileName("NoCollision");
 	PlayerBox->SetupAttachment(RootComponent);
 	PlayerBox->SetVisibility(true);
 
 	//Create our mesh for the camuflage spell
-	CamuflageMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("CamuflageMesh"));
+	CamuflageMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CamuflageMesh"));
 	CamuflageMesh->SetupAttachment(RootComponent);
 	CamuflageMesh->SetVisibility(false);
 
@@ -236,6 +236,7 @@ void APlayerCharacterWithCamera::PlayerManaManager(float DeltaTime)
 		{
 			CamuflageMesh->SetVisibility(false);
 			PlayerBox->SetVisibility(true);
+			GetMesh()->SetVisibility(true);
 			BarrelVisible = false;
 			GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
 		}
@@ -263,6 +264,7 @@ void APlayerCharacterWithCamera::SpellManager()
 	{
 		CamuflageMesh->SetVisibility(false);
 		PlayerBox->SetVisibility(true);
+		GetMesh()->SetVisibility(true);
 		BarrelVisible = false;
 
 		WindSpellManager();
@@ -328,6 +330,7 @@ void APlayerCharacterWithCamera::CamuflageSpellManager()
 	{
 		CamuflageMesh->SetVisibility(false);
 		PlayerBox->SetVisibility(true);
+		GetMesh()->SetVisibility(true);
 		BarrelVisible = false;
 		GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
 	}
@@ -335,6 +338,7 @@ void APlayerCharacterWithCamera::CamuflageSpellManager()
 	{
 		CamuflageMesh->SetVisibility(true);
 		PlayerBox->SetVisibility(false);
+		GetMesh()->SetVisibility(false);
 		BarrelVisible = true;
 		GetCharacterMovement()->MaxWalkSpeed = 100.f;
 	}
@@ -344,6 +348,7 @@ void APlayerCharacterWithCamera::CamuflageSpellManager()
 	{
 		CamuflageMesh->SetVisibility(false);
 		PlayerBox->SetVisibility(true);
+		GetMesh()->SetVisibility(true);
 		BarrelVisible = false;
 		GetCharacterMovement()->MaxWalkSpeed = MovementSpeed;
 	}
@@ -398,10 +403,11 @@ void APlayerCharacterWithCamera::PlayerRotation()
 	APlayerController* PlayerController = Cast<APlayerController>(GetController());
 
 	FHitResult TraceResult(ForceInit);
-	if (PlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_WorldDynamic, false, TraceResult))
+	if (PlayerController->GetHitResultUnderCursor(ECollisionChannel::ECC_GameTraceChannel3, false, TraceResult))
 	{
 		FVector direction(TraceResult.ImpactPoint - GetActorLocation());
 		direction.Z = 0;
+		GetMesh()->SetRelativeRotation(direction.Rotation());
 		PlayerBox->SetRelativeRotation(direction.Rotation());
 		CamuflageMesh->SetRelativeRotation(direction.Rotation());
 	}
@@ -412,6 +418,7 @@ void APlayerCharacterWithCamera::PlayerDead()
 	if (PlayerHealth <= 0)
 	{
 		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, "YOU DIED");
+		Destroy();
 		//APlayerController* const MyPlayer = Cast<APlayerController>(GEngine->GetFirstLocalPlayerController(GetWorld()));
 		//MyPlayer->SetPause(true);
 	}
