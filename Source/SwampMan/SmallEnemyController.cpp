@@ -36,26 +36,19 @@ void ASmallEnemyController::Tick(float DeltaTime)
 		Destroy();
 	}
 	
-
 	// Move the object
 	FVector MyLocation = GetActorLocation();
 	FVector PlayerLocation = Player->GetActorLocation();
 	FVector TargetDestination = (PlayerLocation - MyLocation);
 	TargetDestination.Z = 0;
-	
-	//AddMovementInput(TargetDestination, GetCharacterMovement()->MaxWalkSpeed);
 
 	// Rotate to face the player
-	FRotator FacePlayer = FRotationMatrix::MakeFromX(TargetDestination).Rotator();
-	SetActorRotation(FacePlayer);
+	if (PlayerSpotted)
+	{
+		FRotator FacePlayer = FRotationMatrix::MakeFromX(TargetDestination).Rotator();
+		SetActorRotation(FacePlayer);
+	}
 }
-
-// Called to bind functionality to input
-/*void ASmallEnemyController::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-}*/
 
 void ASmallEnemyController::OnHit(UPrimitiveComponent* HitComp,
 	AActor* OtherActor, UPrimitiveComponent* OtherComp,

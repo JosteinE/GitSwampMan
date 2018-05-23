@@ -9,11 +9,12 @@ AElementalController::AElementalController()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	EnemyCapsule = GetCapsuleComponent();
+	EnemyCapsule->SetSimulatePhysics(false);
 	//Create our mesh
 	EnemyMeshBox = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ElementalMesh"));
+	EnemyMeshBox->SetCollisionProfileName("NoCollision");
 	EnemyMeshBox->SetupAttachment(RootComponent);
-
-	//Speed = 550.0f;
 }
 
 // Called when the game starts or when spawned
@@ -21,25 +22,14 @@ void AElementalController::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	//Calculate health
+	EnemyCapsule->OnComponentHit.AddDynamic(this, &AElementalController::OnHit);
 }
 
 // Called every frame
 void AElementalController::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	/*
-	// Move the object
-	FVector MyLocation = GetActorLocation();
-	FVector PlayerLocation = Player->GetActorLocation();
-	FVector TargetDestination = (PlayerLocation - MyLocation);
-
-	// Normalize it's speed, so it moves at a constant rate.
-	TargetDestination.Normalize();
-
-	MyLocation += TargetDestination * DeltaTime * Speed;
-	SetActorLocation(MyLocation);
-	*/
 
 	{
 		// Rotate to face the player
@@ -49,10 +39,14 @@ void AElementalController::Tick(float DeltaTime)
 		// Lock the emelental's Y and Z rotations
 		FVector FaceTarget = PlayerLocation - MyLocation;
 		FaceTarget.Z = 0;
-	
 
 		FRotator FacePlayer = FRotationMatrix::MakeFromX(FaceTarget).Rotator();
 		SetActorRotation(FacePlayer);
+
+		if (EnemyHealth <= 0)
+		{
+			Destroy();
+		}
 	}
 }
 
@@ -63,3 +57,11 @@ void AElementalController::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 
 }
 
+void AElementalController::OnHit(UPrimitiveComponent* HitComp,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	FVector NormalImpulse, const FHitResult& Hit)
+{
+		EnemyHealth -= 1;
+		UE_LOG(LogTemp, Warning, TEXT("Elemental is now on: %i"), EnemyHealth);
+		OtherActor->Destroy();
+}

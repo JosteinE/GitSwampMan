@@ -43,7 +43,7 @@ void AScrollItem::OnOverlapBegin(UPrimitiveComponent* OverlappedComp,
 		FString pickup = FString::Printf(TEXT("You learned the %s spell!"), *GetName());
 		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, pickup);
 
-		Destroy();
+		//Destroy();
 	}
 }
 // Called when the game starts or when spawned

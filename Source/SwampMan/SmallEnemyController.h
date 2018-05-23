@@ -47,6 +47,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	AActor* Player;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	bool PlayerSpotted = false;
+
 	UPROPERTY(EditAnywhere)
 	int EnemyHealth = 1;
 };

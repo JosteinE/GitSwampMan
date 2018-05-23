@@ -372,7 +372,9 @@ void APlayerCharacterWithCamera::DistractionSpellManager()
 
 			FRotator rotator = PlayerBox->GetComponentRotation();
 			FVector spawnLocation = PlayerBox->GetComponentLocation();
-
+			FVector forwardVector = PlayerBox->GetForwardVector();
+			spawnLocation += forwardVector * 40;
+			spawnLocation.Z += 40;
 			world->SpawnActor<AActor>(BulletToSpawn, spawnLocation, rotator, spawnParams);
 		}
 	}
@@ -477,13 +479,23 @@ void APlayerCharacterWithCamera::OnPlayerOverlap(UPrimitiveComponent* Overlapped
 	{
 		bCamuflageSpellUnlocked = true;
 	}
+	if ((OtherActor->GetName() == "HealthItem" ||
+		OtherActor->GetName() == "HealthItem2" ||
+		OtherActor->GetName() == "HealthItem3" ||
+		OtherActor->GetName() == "HealthItem4") && PlayerHealth < 3)
+	{
+		PlayerHealth = 3;
+		FString pickup = FString::Printf(TEXT("You restored some health!"));
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::White, pickup);
+		OtherActor->Destroy();
+	}
 }
 
 void APlayerCharacterWithCamera::OnPlayerHit(UPrimitiveComponent* HitComp,
 	AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (OtherComp->GetCollisionProfileName() == "EnemyBullet" && !BarrelVisible)
+	if ((OtherComp->GetCollisionProfileName() == "EnemyBullet" || OtherComp->GetCollisionProfileName() == "BigEnemyBullet") && !BarrelVisible)
 	{
 		if (!GodMode)
 		{

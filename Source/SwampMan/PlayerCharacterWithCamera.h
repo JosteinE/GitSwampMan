@@ -160,5 +160,6 @@ public:
 	void DistractionSpellManager();
 	void ZoomManager(float DeltaTime);
 	//
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	bool BarrelVisible = false;
 };
